@@ -96,12 +96,13 @@ const startApp = async () => {
       message: 'Do you want to edit your picture?',
       type: 'confirm',
     }
-
   ]);
-  // if file is not there just quit the app
-  if (!fs.existsSync(`./img/'${options.inputImage}`)) {
+ // if answer is file, just quit the app
+  if (!fs.existsSync('./img/' + options.inputImage)) {
+    console.log('File Not Found !!!');
     process.exit();
-  }
+}
+
   // extra options block
   if (options.edition) {
     const editionOptions = await inquirer.prompt([{
