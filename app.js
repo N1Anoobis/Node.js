@@ -1,36 +1,108 @@
+const Jimp = require('jimp');
+const inquirer = require('inquirer');
 const fs = require('fs');
-const randomInt = require('random-int');
 
-const ganders = ['M', 'F'];
-const firstNameMale = ['Max', 'Florian', 'Jack', 'Daniel', 'Sam', 'Bob', 'Tim', 'George', 'Nick'];
-const firstNameFemale = ['Agnes', 'Angela', 'Klaudia', 'Izabel', 'Anna', 'Lisa', 'Nat', 'Lee', 'Vicky'];
-const lastName = ['King', 'West', 'Moon', 'Rogers', 'Emglish', 'Anderson', 'Willkinson', 'Bond'];
-const people = [];
+  const addTextWatermarkToImage = async function (inputFile, outputFile, text) {
+    try {
+    const image = await Jimp.read(inputFile);
+    const font = await Jimp.loadFont(Jimp.FONT_SANS_32_BLACK);
+    const textData = {
+      text: text,
+      alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER,
+      alignmentY: Jimp.VERTICAL_ALIGN_MIDDLE,
+    };
+    image.print(font, 0, 0, textData, image.getWidth(), image.getHeight());
+    await image.quality(100).writeAsync(outputFile);
+  }catch (error) {
+    cconsole.log('Something went wrong... Try again');
+  }
+  console.log('Task complited. Files ready to use');
+  startApp();
+} 
 
-for (let index = 0; index < 20; index++) {
 
-    let gander = Math.floor(Math.random() * ganders.length);
-    const chosenGender = ganders[gander];
 
-    let surname = Math.floor(Math.random() * lastName.length);
-    let lastname = lastName[surname]
-    const age = Math.floor(Math.random() * (78 - 18 + 1) + 18)
-    let name = chosenGender === 'F' ? firstNameFemale[Math.floor(Math.random() * firstNameFemale.length)] : firstNameMale[Math.floor(Math.random() * firstNameMale.length)]
 
-    const person = {
-        gender: chosenGender,
-        name: name,
-        surname: lastname,
-        age: age,
-        email: `${name}.${lastname}@gmail.com`,
-        mobile: randomInt(100000000, 1000000000),
+
+const addImageWatermarkToImage = async function (inputFile, outputFile, watermarkFile) {
+  try {
+    const image = await Jimp.read(inputFile);
+    const watermark = await Jimp.read(watermarkFile);
+    const x = image.getWidth() / 2 - watermark.getWidth() / 2;
+    const y = image.getHeight() / 2 - watermark.getHeight() / 2;
+
+    image.composite(watermark, x, y, {
+      mode: Jimp.BLEND_SOURCE_OVER,
+      opacitySource: 0.5,
+    });
+    await image.quality(100).writeAsync(outputFile);
+  }catch (error) {
+    console.log('Something went wrong... Try again');
+  }
+  console.log('Task complited. Files ready to use');
+  startApp();
+} 
+
+const prepareOutputFilename = (filename) => {
+  const [name, ext] = filename.split('.');
+  return `${name}-with-watermark.${ext}`;
+};
+
+const startApp = async () => {
+
+  // Ask if user is ready
+  const answer = await inquirer.prompt([{
+    name: 'start',
+    message: 'Hi! Welcome to "Watermark manager". Copy your image files to `/img` folder. Then you\'ll be able to use them in the app. Are you ready?',
+    type: 'confirm'
+  }]);
+
+  // if answer is no, just quit the app
+  if (!answer.start) process.exit();
+
+  // ask about input file and watermark type
+  const options = await inquirer.prompt([{
+    name: 'inputImage',
+    type: 'input',
+    message: 'What file do you want to mark?',
+    default: 'test.jpg',
+  }, {
+    name: 'watermarkType',
+    type: 'list',
+    choices: ['Text watermark', 'Image watermark'],
+  }]);
+
+  if (options.watermarkType === 'Text watermark') {
+
+    const text = await inquirer.prompt([{
+      name: 'value',
+      type: 'input',
+      message: 'Type your watermark text:',
+    }])
+    options.watermarkText = text.value;
+    if (fs.existsSync('./img/' + options.inputImage)) {
+      addTextWatermarkToImage('./img/' + options.inputImage, './img/' + prepareOutputFilename(options.inputImage), options.watermarkText);
+
+    } else {
+
+      console.log('Something went wrong... Try again');
     }
-    people.push(person)
-}
+  } else {
 
-console.log(people)
+    const image = await inquirer.prompt([{
+      name: 'filename',
+      type: 'input',
+      message: 'Type your watermark name:',
+      default: 'logo.png',
+    }])
+    options.watermarkImage = image.filename;
+    if (fs.existsSync('./img/' + options.inputImage)) {
+      addImageWatermarkToImage('./img/' + options.inputImage, './img/' + prepareOutputFilename(options.inputImage), './img/' + options.watermarkImage);
+    } else {
 
-fs.writeFile('people.json', JSON.stringify(people), (err) => {
-    if (err) throw err;
-    console.log('The file has been saved!');
-});
+      console.log('Something went wrong... Try again');
+    }
+  }
+};
+
+startApp();
